@@ -14,9 +14,13 @@ set(LIB_OPTPARSE "${LIB_DIR}/optparse")
 file(GLOB SRC_FILES "${SRC_DIR}/*.c")
 file(GLOB INCLUDE_FILES "${INCLUDE_DIR}/*.h")
 
+find_package(X11 REQUIRED)
+
 add_executable(ambi ${SRC_FILES})
 
 target_include_directories(ambi PRIVATE ${INCLUDE_DIR} ${LIB_OPTPARSE})
+target_link_libraries(ambi PRIVATE ${X11_LIBRARIES} Xext)
+
 
 if(USE_HW_ACCELERATION)
     find_package(OpenGL REQUIRED)
