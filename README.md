@@ -1,4 +1,4 @@
-# Ambilight Project
+# sambi - simple ambilight
 
 This is a lightweight and fast multiplatform ambilight project written in C. The application captures pixel colors from your screen and communicates them to a controller via USB, creating an immersive lighting experience.
 
