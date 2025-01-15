@@ -9,13 +9,13 @@
 
 int main(int argc, char *argv[]) {
     if (argc < 2) {
-        printf("Использование: %s <команда>\n", argv[0]);
+        printf("Use: %s <command>\n", argv[0]);
         return 1;
     }
 
     int client_fd = socket(AF_UNIX, SOCK_STREAM, 0);
     if (client_fd < 0) {
-        perror("Ошибка создания сокета");
+        perror("Error: socket isn't created.\n");
         return 1;
     }
 
@@ -25,7 +25,7 @@ int main(int argc, char *argv[]) {
     strncpy(addr.sun_path, SOCKET_PATH, sizeof(addr.sun_path) - 1);
 
     if (connect(client_fd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
-        perror("Ошибка подключения");
+        perror("Error: connection.\n");
         return 1;
     }
 
