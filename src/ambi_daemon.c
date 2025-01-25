@@ -7,7 +7,7 @@
 #include <getopt.h>
 #include <limits.h>
 #include <pthread.h>
-
+#include <stdbool.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -18,6 +18,8 @@
 #include <X11/extensions/XShm.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
+
+#include <libusb-1.0/libusb.h>
 
 #include "daemon.h"
 
@@ -263,9 +265,10 @@ void init(void *data)
 
 #define debug_x_len 2560
 #define debug_y_len 1440
-#define ws2812_len  180
-
-typedef union {
+#define X_LED 42
+#define Y_LED 24
+#define ws2812_len  (X_LED + X_LED + Y_LED + Y_LED)
+typedef struct {
     u_int8_t R;
     u_int8_t G;
     u_int8_t B;
@@ -276,6 +279,11 @@ int main(int argc, char *argv[])
     processing_cmd(argc, argv);
     daemonize2(init, NULL);
 
+    libusb_context *ctx = NULL;
+    libusb_device_handle *argb_controller_handle;
+    int transferred, res;
+    u_int8_t data[64];
+    
     Display *display = XOpenDisplay(NULL);
     if (!display) {
         fprintf(stderr, "Не удалось открыть дисплей\n");
@@ -326,40 +334,129 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    LED_RGB led_buf[ws2812_len] = {0,};
-    size_t x = 0, y = 0;
+    LED_RGB ledBuf[ws2812_len] = {0,};
+
+
+//    ssize_t devCount = libusb_get_device_list(NULL, list);
+//    if(devCount < 0) return NULL;
+//    for(ssize_t i = 0; i < devCount; i++) {
+//        libusb_device *device = list[i];
+//        struct libusb_device_descriptor *desc;
+//        int r = libusb_get_device_descriptor(device, &desc);
+//    	if (r < 0) {
+//    		argb_controller = NULL;
+//    	}
+//        if(desc->idProduct == atoi("0483") && desc->idVendor == atoi("5740")){
+//            argb_controller = list[i];
+//        }
+//    }
+    libusb_init(&ctx);
+    
+    argb_controller_handle = libusb_open_device_with_vid_pid(ctx, 0x0483, 0x5740);
+    if(argb_controller_handle != NULL) {
+        libusb_set_configuration(argb_controller_handle, 1);
+        libusb_claim_interface(argb_controller_handle, 1);
+        libusb_detach_kernel_driver(argb_controller_handle, 1);
+    } else {
+        printf("Устройство не найдено\n");
+    }
     while( !daemon_info.terminated )
     {
-        XShmGetImage(display, root, image, 0, 0, AllPlanes);
-        for(size_t pixel = 0; pixel < ws2812_len; pixel++) {
-            if(x <= debug_x_len && y == 0) {
-                x = (debug_x_len / ws2812_len) * pixel;
-            } else if (x >= 0 && y < debug_y_len) {
-                y = (debug_y_len / ws2812_len) * 
+        //argb_controller = findDevice("0483", "5740"); /* TODO: must be start options */
+
+        //if(argb_controller != NULL) {
+        if(argb_controller_handle != NULL) {
+            size_t xUp    = 0,           yUp    = 0;
+            size_t xDown  = debug_x_len, yDown  = debug_y_len - 10;
+            size_t xLeft  = 0,           yLeft  = debug_y_len;
+            size_t xRight = debug_x_len, yRight = 0;
+
+            XShmGetImage(display, root, image, 0, 0, AllPlanes);
+
+            u_int32_t red_mask = image->red_mask;
+            u_int32_t green_mask = image->green_mask;
+            u_int32_t blue_mask = image->blue_mask;
+            for(size_t i = 0; i < X_LED; i++) { /* up */
+                u_int32_t up_pixel = XGetPixel(image, xUp, yUp);
+                ledBuf[i].R = (up_pixel & red_mask) >> 16;
+                ledBuf[i].G = (up_pixel & green_mask) >> 8;
+                ledBuf[i].B = (up_pixel & blue_mask);
+                xUp = (debug_x_len / X_LED) * i;
             }
-
-            unsigned long pixel = XGetPixel(image, x, y);
-            unsigned long red_mask = image->red_mask;
-            unsigned long green_mask = image->green_mask;
-            unsigned long blue_mask = image->blue_mask;
-
-            unsigned char red = (pixel & red_mask) >> 16;
-            unsigned char green = (pixel & green_mask) >> 8;
-            unsigned char blue = (pixel & blue_mask);
-
-            led_buf[pixel].R = 
+            for(size_t i = 0; i < Y_LED; i++) { /* right */
+                u_int32_t right_pixel = XGetPixel(image, xRight, yRight);
+                ledBuf[X_LED + i].R = (right_pixel & red_mask) >> 16;
+                ledBuf[X_LED + i].G = (right_pixel & green_mask) >> 8;
+                ledBuf[X_LED + i].B = (right_pixel & blue_mask);
+                yRight = (debug_y_len / Y_LED) * i;
+            }
+            for(size_t i = 0; i < X_LED; i++) { /* Down */
+                u_int32_t down_pixel = XGetPixel(image, xDown, yDown);
+                ledBuf[X_LED + Y_LED + i].R = (down_pixel & red_mask) >> 16;
+                ledBuf[X_LED + Y_LED + i].G = (down_pixel & green_mask) >> 8;
+                ledBuf[X_LED + Y_LED + i].B = (down_pixel & blue_mask);
+                xDown = (debug_x_len / Y_LED) * (X_LED - i);
+            }
+            for(size_t i = 0; i < Y_LED; i++) { /*left*/
+                u_int32_t left_pixel = XGetPixel(image, xLeft, yLeft);
+                ledBuf[X_LED + Y_LED + X_LED + i].R = (left_pixel & red_mask) >> 16;
+                ledBuf[X_LED + Y_LED + X_LED + i].G = (left_pixel & green_mask) >> 8;
+                ledBuf[X_LED + Y_LED + X_LED + i].B = (left_pixel & blue_mask);
+                yLeft = (debug_y_len / Y_LED) * (Y_LED - i);
+            }
+          /* (ws2812_len / 20) + 1 = 7 */
+            for(u_int32_t i = 0; i < 7; i++) {
+                if(i < 6) {
+                    data[3] = i;
+                    memcpy(data + 4, &ledBuf[i * 20], 20 * sizeof(LED_RGB));
+                } else {
+                    for(size_t j = 0; j < sizeof(data); j++) {
+                        data[j] = 0;
+                    }
+                    data[3] = i;
+                    memcpy(data + 4, &ledBuf[120], 12 * sizeof(LED_RGB));
+                }
+                res = libusb_bulk_transfer(argb_controller_handle, 0x01, data, sizeof(data), &transferred, 1000);
+                if(res != 0) {
+                    printf("Transfer fault %d\n", res);
+                }
+                usleep(100);
+            }
+            usleep(16000);
+        } else {
+            printf("No device\n");
+            argb_controller_handle = libusb_open_device_with_vid_pid(ctx, 0x0483, 0x5740);
+            if(argb_controller_handle != NULL) {
+                libusb_claim_interface(argb_controller_handle, 1);
+            }
+            sleep(1);
         }
-        // Получение цвета пикселя
-        int x = 100; // Позиция X
-        int y = 100; // Позиция Y
+    
 
-
-        // Извлечение RGB-значений из пикселя
-
-
-        printf("Цвет пикселя (RGB): (%u, %u, %u)\n", red, green, blue);
-        sleep(1);
+            //for(size_t i = 0; i < ws2812_len; i++) {
+            //    char temp[10];
+            //    if(i < X_LED) {
+            //        strcpy(temp, "upper ");
+            //    } else if (i < X_LED + Y_LED) {
+            //        strcpy(temp, "right ");
+            //    } else if (i < X_LED + Y_LED + X_LED) {
+            //        strcpy(temp, "down ");
+            //    } else {
+            //        strcpy(temp, "left ");
+            //    }
+            //    printf("%s [%ld]: %d %d %d \n", temp, i, ledBuf[i].R, ledBuf[i].G, ledBuf[i].B);
+            //}
+//            usleep(100);
+        //} else {
+        //    sleep(3);
+        //}
     }
+
+    libusb_release_interface(argb_controller_handle, 1);
+    libusb_close(argb_controller_handle);
+    libusb_exit(ctx);
+
+
     XShmDetach(display, &shminfo);
     shmdt(shminfo.shmaddr);
     shmctl(shminfo.shmid, IPC_RMID, NULL);

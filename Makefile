@@ -53,7 +53,7 @@ CFLAGS    += -DCHANGED_FILES=$(CHANGED_FILES)
 CFLAGS    += -I$(COMMON_DIR)
 CFLAGS    += -I/usr/include/X11
 CFLAGS    += -O2  -Wall  -Wextra  -pipe
-CFLAGS 	  += -g `pkg-config --cflags x11`
+CFLAGS 	  += -g `pkg-config --libs --cflags x11 libusb-1.0`
 CFLAGS    += -lpthread
 
 CC        ?=  gcc
