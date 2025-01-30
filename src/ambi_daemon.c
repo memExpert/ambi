@@ -263,8 +263,8 @@ void init(void *data)
     //Here is your code to initialize
 }
 
-#define debug_x_len 2560
-#define debug_y_len 1440
+#define debug_x_len (2560)
+#define debug_y_len (1440)
 #define X_LED 42
 #define Y_LED 24
 #define ws2812_len  (X_LED + X_LED + Y_LED + Y_LED)
@@ -366,10 +366,10 @@ int main(int argc, char *argv[])
 
         //if(argb_controller != NULL) {
         if(argb_controller_handle != NULL) {
-            size_t xUp    = 0,           yUp    = 0;
-            size_t xDown  = debug_x_len, yDown  = debug_y_len - 10;
-            size_t xLeft  = 0,           yLeft  = debug_y_len;
-            size_t xRight = debug_x_len, yRight = 0;
+            size_t xUp    = 0 + 10,                yUp    = 0 + 10;
+            size_t xDown  = debug_x_len - 10, yDown  = debug_y_len - 10;
+            size_t xLeft  = 0 + 10,                yLeft  = debug_y_len - 10;
+            size_t xRight = debug_x_len - 10, yRight = 0 + 10;
 
             XShmGetImage(display, root, image, 0, 0, AllPlanes);
 
@@ -395,7 +395,7 @@ int main(int argc, char *argv[])
                 ledBuf[X_LED + Y_LED + i].R = (down_pixel & red_mask) >> 16;
                 ledBuf[X_LED + Y_LED + i].G = (down_pixel & green_mask) >> 8;
                 ledBuf[X_LED + Y_LED + i].B = (down_pixel & blue_mask);
-                xDown = (debug_x_len / Y_LED) * (X_LED - i);
+                xDown = (debug_x_len / X_LED) * (X_LED - i);
             }
             for(size_t i = 0; i < Y_LED; i++) { /*left*/
                 u_int32_t left_pixel = XGetPixel(image, xLeft, yLeft);
@@ -416,13 +416,16 @@ int main(int argc, char *argv[])
                     data[3] = i;
                     memcpy(data + 4, &ledBuf[120], 12 * sizeof(LED_RGB));
                 }
+                
                 res = libusb_bulk_transfer(argb_controller_handle, 0x01, data, sizeof(data), &transferred, 1000);
                 if(res != 0) {
                     printf("Transfer fault %d\n", res);
                 }
-                usleep(100);
+                usleep(500);
+                //sleep(1);
             }
-            usleep(16000);
+            //usleep(150000);
+            //sleep(1);
         } else {
             printf("No device\n");
             argb_controller_handle = libusb_open_device_with_vid_pid(ctx, 0x0483, 0x5740);

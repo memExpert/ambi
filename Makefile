@@ -1,6 +1,6 @@
 DAEMON_NAME           = ambi_daemon
 DAEMON_MAJOR_VERSION  = 0
-DAEMON_MINOR_VERSION  = 0
+DAEMON_MINOR_VERSION  = 1
 DAEMON_PATCH_VERSION  = *hash
 #variants:  hash - set PATCH_VERSION == commit hash (12 digits)
 #variants: *hash - set PATCH_VERSION == * + commit hash (12 digits),
