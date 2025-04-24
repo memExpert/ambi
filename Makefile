@@ -8,7 +8,7 @@ DAEMON_PATCH_VERSION  = *hash
 #variants:  xxx  - set PATCH_VERSION == xxx (your variant)
 
 DAEMON_PID_FILE_NAME  = $(DAEMON_NAME).pid
-DAEMON_LOG_FILE_NAME  = $(DAEMON_NAME).log
+DAEMON_LOG_FILE_NAME  = $var/log/(DAEMON_NAME).log
 DAEMON_CMD_PIPE_NAME  = /tmp/$(DAEMON_NAME).cmd
 DAEMON_NO_CHDIR       = 1
 DAEMON_NO_FORK        = 0
@@ -91,7 +91,7 @@ all: debug release
 
 
 .PHONY: release
-release: CFLAGS := -s  $(CFLAGS)
+release: CFLAGS := -s  $(CFLAGS) $(LDFLAGS)
 release: $(DAEMON_NAME)
 
 

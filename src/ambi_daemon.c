@@ -366,43 +366,48 @@ int main(int argc, char *argv[])
 
         //if(argb_controller != NULL) {
         if(argb_controller_handle != NULL) {
-            size_t xUp    = 0 + 10,                yUp    = 0 + 10;
-            size_t xDown  = debug_x_len - 10, yDown  = debug_y_len - 10;
-            size_t xLeft  = 0 + 10,                yLeft  = debug_y_len - 10;
-            size_t xRight = debug_x_len - 10, yRight = 0 + 10;
+            size_t xDown  = 0               , yDown  = debug_y_len - 10;
+            size_t xRight = debug_x_len - 10, yRight = debug_y_len - 10;
+            size_t xUp    = debug_x_len - 10, yUp    = 0 + 10;
+            size_t xLeft  = 0 + 10          , yLeft  = 0 + 10;
+            
 
             XShmGetImage(display, root, image, 0, 0, AllPlanes);
 
             u_int32_t red_mask = image->red_mask;
             u_int32_t green_mask = image->green_mask;
             u_int32_t blue_mask = image->blue_mask;
-            for(size_t i = 0; i < X_LED; i++) { /* up */
-                u_int32_t up_pixel = XGetPixel(image, xUp, yUp);
-                ledBuf[i].R = (up_pixel & red_mask) >> 16;
-                ledBuf[i].G = (up_pixel & green_mask) >> 8;
-                ledBuf[i].B = (up_pixel & blue_mask);
-                xUp = (debug_x_len / X_LED) * i;
+
+            for(size_t i = 0; i < X_LED; i++) { /* Down */
+                u_int32_t down_pixel = XGetPixel(image, xDown, yDown);
+                ledBuf[i].R = (down_pixel & red_mask) >> 16;
+                ledBuf[i].G = (down_pixel & green_mask) >> 8;
+                ledBuf[i].B = (down_pixel & blue_mask);
+                xDown = (debug_x_len / X_LED) * i;
             }
+
             for(size_t i = 0; i < Y_LED; i++) { /* right */
                 u_int32_t right_pixel = XGetPixel(image, xRight, yRight);
                 ledBuf[X_LED + i].R = (right_pixel & red_mask) >> 16;
                 ledBuf[X_LED + i].G = (right_pixel & green_mask) >> 8;
                 ledBuf[X_LED + i].B = (right_pixel & blue_mask);
-                yRight = (debug_y_len / Y_LED) * i;
+                yRight = (debug_y_len / Y_LED) * (Y_LED - i);
             }
-            for(size_t i = 0; i < X_LED; i++) { /* Down */
-                u_int32_t down_pixel = XGetPixel(image, xDown, yDown);
-                ledBuf[X_LED + Y_LED + i].R = (down_pixel & red_mask) >> 16;
-                ledBuf[X_LED + Y_LED + i].G = (down_pixel & green_mask) >> 8;
-                ledBuf[X_LED + Y_LED + i].B = (down_pixel & blue_mask);
-                xDown = (debug_x_len / X_LED) * (X_LED - i);
+
+            for(size_t i = 0; i < X_LED; i++) { /* up */
+                u_int32_t up_pixel = XGetPixel(image, xUp, yUp);
+                ledBuf[X_LED + Y_LED + i].R = (up_pixel & red_mask) >> 16;
+                ledBuf[X_LED + Y_LED + i].G = (up_pixel & green_mask) >> 8;
+                ledBuf[X_LED + Y_LED + i].B = (up_pixel & blue_mask);
+                xUp = (debug_x_len / X_LED) * (X_LED - i);
             }
+
             for(size_t i = 0; i < Y_LED; i++) { /*left*/
                 u_int32_t left_pixel = XGetPixel(image, xLeft, yLeft);
                 ledBuf[X_LED + Y_LED + X_LED + i].R = (left_pixel & red_mask) >> 16;
                 ledBuf[X_LED + Y_LED + X_LED + i].G = (left_pixel & green_mask) >> 8;
                 ledBuf[X_LED + Y_LED + X_LED + i].B = (left_pixel & blue_mask);
-                yLeft = (debug_y_len / Y_LED) * (Y_LED - i);
+                yLeft = (debug_y_len / Y_LED) * i;
             }
           /* (ws2812_len / 20) + 1 = 7 */
             for(u_int32_t i = 0; i < 7; i++) {
